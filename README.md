@@ -1,91 +1,81 @@
 # lean-gym
 
-This repository lets you interact with Lean through a REPL.
-See [Formal Mathematics Statement Curriculum Learning](https://arxiv.org/abs/2202.01344)
-for a presentation of `lean-gym`.
+`Lean-gym` is a package that is used to interact with Lean programmatically through a Read Evaluate Print Loop (REPL).
+
+
+## Dependencies
+Lean 3 and mathlib need to be installed before you can use lean-gym.
+The same can be installed from [here](https://leanprover-community.github.io/get_started.html).
+
 
 ## Setup
-
-```bash
-# Download pre-built binaries and build the project (targeting mathlib).
+Clone the [lean-gyn](https://github.com/openai/lean-gym) github repo and execute the setup file.
+```
 bash ./scripts/setup.sh
 ```
 
-## Usage
-
+## Interaction with user
+To start the repl we have to run the following command
 ```bash
-lean --run src/repl.lean
-```
-
-Starts a fresh REPL. Once started, the REPL accepts the following commands:
-
-- `init_search`: takes a declaration name as well as a list of open namespaces
-to initialize a search at the given declaration opening the provided namespaces,
-and returning the initial tactic state (along with a fresh `search_id` and
-`tactic_state_id`).
-- `run_tac`: takes a `search_id`, a `tactic_state_id` and a tactic to apply at
-the tactic state denoted by the provided ids.
-- `clear_search`: takes a `search_id` to clear all state related to a search.
-
-The commands can be interleaved freely enabling the parallelization of multiple
-proof searches against the same REPL.
-
-```
 $ lean --run src/repl.lean
-
-["init_search", ["int.prime.dvd_mul", ""]]
-{"error":null,"proof_steps":[],"search_id":"0","tactic_state":"⊢ ∀ {m n : ℤ} {p : ℕ}, nat.prime p → ↑p ∣ m * n → p ∣ m.nat_abs ∨ p ∣ n.nat_abs","tactic_state_id":"0"}
-
-["run_tac",["0","0","intros"]]
-{"error":null,"proof_steps":[],"search_id":"0","tactic_state":"m n : ℤ,\np : ℕ,\nhp : nat.prime p,\nh : ↑p ∣ m * n\n⊢ p ∣ m.nat_abs ∨ p ∣ n.nat_abs","tactic_state_id":"1"}
-
-["run_tac",["0","1","apply (nat.prime.dvd_mul hp).mp"]]
-{"error":null,"proof_steps":[],"search_id":"0","tactic_state":"m n : ℤ,\np : ℕ,\nhp : nat.prime p,\nh : ↑p ∣ m * n\n⊢ p ∣ m.nat_abs * n.nat_abs","tactic_state_id":"2"}
-
-["run_tac",["0","2","rw ← int.nat_abs_mul"]]
-{"error":null,"proof_steps":[],"search_id":"0","tactic_state":"m n : ℤ,\np : ℕ,\nhp : nat.prime p,\nh : ↑p ∣ m * n\n⊢ p ∣ (m * n).nat_abs","tactic_state_id":"3"}
-
-["run_tac",["0","3","exact int.coe_nat_dvd_left.mp h"]]
-{"error":null,"proof_steps":[],"search_id":"0","tactic_state":"no goals","tactic_state_id":"4"}
 ```
 
-## Declaration names
+The interaction by the user is through a terminal where the REPL is started by running the `src/repl.lean` file of the lean-gym. And then, user can start the proof search by using commands like `init_search`, `run_tac`, and `clear_search`.
 
-Declaration names and open namespaces are available in the `data/` directory to be used with the
-`init_search` command.
 
-## Notes
+- `init_search`: This takes input as a declaration name and namespaces (declaration names and open namespaces are available in the `data/` directory) and and initializes the search for the given declaration (theorem) set the env with open namespaces to it and generate a new tactic state and returns the `search_id` and `tactic_state_id`.
+- `run_tac`: it takes the `search_id`, `tactic_state_id`, and a `tactic` as input and applies the tactic to the current tactic state and gets a new goal or results into an error. If there is no more subgoals, check that the produced proof is valid.
+- `clear_search`: This command takes `search_id` as input and clears the states related to that search_id by removing the table associated with it.
 
-The REPL is subject to crashes in rare cases. Empirically such crash happens no
-more than ~0.01% of the time.
 
-When a tactic state is reached with no left goals, some custom logic is run to check that the
-resulting proof's type matches the top level goal type and does not rely on `sorry`. We also check
-for the presence of `undefined` in the proof term. As an example, the following MiniF2F proofs will
-safely fail with error `proof_validation_failed`.
-
+### Some commands in use
+- Initalise the proof search for the theorem `int.prime.dvd_pow'`
 ```
-["init_search", ["mathd_algebra_35", ""]]
-["run_tac", ["0", "0", "intros"]]
-["run_tac", ["0", "1", "sorry"]]
+["init_search", ["int.prime.dvd_pow'", ""]]
+{"error":null,"proof_steps":[],"search_id":"1","tactic_state":"⊢ ∀ {n : ℤ} {k p : ℕ}, nat.prime p → ↑p ∣ n ^ k → ↑p ∣ n","tactic_state_id":"0"}
 ```
 
+- Run tactic `intros`
 ```
-["init_search", ["induction_divisibility_3divnto3m2n", ""]]
-["run_tac", ["0", "0", "intros"]]
-["run_tac", ["0", "1", "rw [add_comm]"]]
-["run_tac", ["0", "2", "have h3 : 1 * (n + 1) ≤ (n + 1)"]]
-["run_tac", ["0", "3", "rw one_mul"]]
-["run_tac", ["0", "4", "apply dvd_trans"]]
-["run_tac", ["0", "5", "swap"]]
-["run_tac", ["0", "6", "simp []"]]
+["run_tac",["1","0","intros"]]
+{"error":null,"proof_steps":[],"search_id":"1","tactic_state":"n : ℤ,\nk p : ℕ,\nhp : nat.prime p,\nh : ↑p ∣ n ^ k\n⊢ ↑p ∣ n","tactic_state_id":"1"}
 ```
 
+- Run tactic `rw int.coe_nat_dvd_left`
 ```
-["init_search", ["mathd_numbertheory_13", ""]]
-["run_tac", ["0", "0", "intros u v hu hv hsum"]]
-["run_tac", ["0", "1", "intro h"]]
-["run_tac", ["0", "2", "contrapose h"]]
-["run_tac", ["0", "3", "intro hn"]]
-["run_tac", ["0", "4", "exact not_lt_of_lt hn undefined"]]
+["run_tac",["1","1","rw int.coe_nat_dvd_left"]]
+{"error":null,"proof_steps":[],"search_id":"1","tactic_state":"n : ℤ,\nk p : ℕ,\nhp : nat.prime p,\nh : ↑p ∣ n ^ k\n⊢ p ∣ n.nat_abs","tactic_state_id":"2"}
 ```
+
+- Run tactic `exact int.prime.dvd_pow hp h`
+```
+["run_tac",["1","2","exact int.prime.dvd_pow hp h"]]
+{"error":null,"proof_steps":[],"search_id":"1","tactic_state":"no goals","tactic_state_id":"3"}
+```
+
+- Clear the proof search with `search_id` = 1
+```
+["clear_search",["1"]]
+{"error":null,"proof_steps":[],"search_id":"1","tactic_state":null,"tactic_state_id":null}
+```
+- When a tactic state is reached with no left goals, some custom logic is run to check that the resulting proof's type matches the top level goal type and does not rely on `sorry`.
+
+
+## Interaction through Python
+[Here](https://github.com/rahul3613/lean-gym/blob/main/py_gyn.ipynb) is a jupyter notebook with sample code for using the lean-gym from python.
+
+## Interaction with Lean
+`src/repl.lean` is the file responsible for handling the Read Evaluate Print Loop.
+It imports all the results from mathlib (`import all`) and necessary packages from the lean. 
+Then a structure `LeanREPLState` is created to store and handle the proof states. 
+`LeanREPLState` is initialized with a new state for the decleration (theorem name) passed in `init_search` command.
+
+For every new `run_tactic` command, the current state for the search id is accessed from the LeanREPLState. Then the requested tactic is applied to the current state, to get a new state. After application of each new tactic number of new goals is counted if the the number of new goals in 0 then `finalize_proof` function is called to verify the proof generated, and if the number of goals is more than 0 then the new goals are given in output.
+
+## The REPL
+1. Read a line from the terminal.
+2. Parse the request to get the `command` and other info like `search_id`, `tactic_state_id`, `tactic`.
+3. Use the handle functions like `handle_init_search`, `handle_run_tac`, and `handle_clear_search` to execute the command parsed and update the state accordingly.
+4. After execution, `LeanREPLResponse.to_json` function converts the result to JSON format.
+5. Output the result.
+6. Go back to step 1.
